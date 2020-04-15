@@ -200,16 +200,22 @@ class IsolateCollections(bpy.types.Operator):
         return list_of_collections
 
     def toggle_hide_isolate(self, collections, isolated):
-        # TODO: check if currently selected selection is the one we isolated with
         if not isolated:
             # save collection state for later and hide unactive ones
             for i in bpy.data.collections:
-                vlc = IsolateCollections.find_vlc(self, bpy.context.view_layer.layer_collection, i)
-                bpy.types.Scene.previously_active_collections_C.append([vlc, vlc.hide_viewport])
-                if i in collections:
-                    vlc.hide_viewport = False
+                # TODO : check if collection is in a view layer
+                vlc = []
+                IsolateCollections.find_vlc(self, bpy.context.view_layer.layer_collection, i, vlc)
+                if len(vlc) > 0:
+                    for v in vlc:
+                        bpy.types.Scene.previously_active_collections_C.append([v, v.hide_viewport])
+                        if i in collections:
+                            v.hide_viewport = False
+                        else:
+                            v.hide_viewport = True
                 else:
-                    vlc.hide_viewport = True
+                    print(f"error - aaa")
+
             bpy.types.Scene.collections_isolated = True
             bpy.types.Scene.collections_all_visible = False
         elif isolated:
@@ -220,16 +226,15 @@ class IsolateCollections(bpy.types.Operator):
             bpy.types.Scene.collections_all_visible = False
             bpy.types.Scene.previously_active_collections_C = []
 
-    def find_vlc(self, vlc, collection):
+    def find_vlc(self, vlc, collection, list):
         # for each child of view layer collection
         for child in vlc.children:
-            # return the target collection is found
+            # return the target collection if found
             if child.collection == collection:
-                return child
+                list.append(child)
             # otherwise for each child loop round and find another
             elif child.children:
-                for i in child.children:
-                    IsolateCollections.find_vlc(self, child, child.collection)
+                IsolateCollections.find_vlc(self, child, collection, list)
 
     def addParentsToList(self, collection, col_parent_list):
         # if any collection has children
@@ -248,7 +253,6 @@ class IsolateCollections(bpy.types.Operator):
             for child in collection.children:
                 # add to list
                 col_children_list.append(child)
-                print(child)
                 # if child has children, runn again on child
                 if child.children:
                     IsolateCollections.addChildrenToList(self, child, col_children_list)
