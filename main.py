@@ -172,6 +172,24 @@ class IsolateCollections(bpy.types.Operator):
     bpy.types.Scene.previously_active_collections_D = []
     bpy.types.Scene.collections_isolated = False
 
+    def execute(self, context):
+        # make a list of collections currently selected object is in
+        list_of_collections = IsolateCollections.get_collections(self)
+        # toggle isolation of collections
+        IsolateCollections.toggle_hide_isolate(list_of_collections, bpy.types.Scene.collections_isolated)
+        return {"FINISHED"}
+
+    def find_vlc(self, vlc, collection):
+        # for each child of view layer collection
+        for child in vlc.children:
+            # return the target collection is found
+            if child.collection == collection:
+                return child
+            # otherwise for each child loop round and find another
+            elif child.children:
+                foreach i in child.children:
+                    find_vlc(self, child, child.collection)
+
     def addParentsToList(self, collection, col_parent_list):
         # if any collection has children
         for c in bpy.data.collections:
@@ -195,15 +213,6 @@ class IsolateCollections(bpy.types.Operator):
                     IsolateCollections.addChildrenToList(self, child, col_children_list)
         return col_children_list
 
-    def find_view_layer_collection(self, col, col_layer, col_list):
-        if col_layer.collection == col:
-            col_list.append(col_layer)
-        if col_layer.children:
-            for child in col_layer.children:
-                IsolateCollections.find_view_layer_collection(self, col, child, col_list)
-        else:
-            return col_list
-
     def get_collections(self):
         list_of_objects = bpy.context.selected_objects
         list_of_collections = []
@@ -226,16 +235,11 @@ class IsolateCollections(bpy.types.Operator):
         return list_of_collections
 
     def toggle_hide_isolate(collections, isolated):
-        if isolated:
-            # unhide / return to previous state
-            for i in bpy.types.Scene.previously_active_collections_C:
-                i[0].hide_viewport = i[1]
-            bpy.types.Scene.collections_isolated = False
-            bpy.types.Scene.previously_active_collections_C = []
-
-        else:
-            # hide collections and save their state for later
+        # TODO: check if currently selected selection is the one we isolated with
+        if not isolated:
+            # save collection state for later and hide unactive ones
             for i in bpy.data.collections:
+                vlc = IsolateCollections.find_vlc()
                 bpy.types.Scene.previously_active_collections_C.append([i, i.hide_viewport])
                 if i in collections:
                     i.hide_viewport = False
@@ -244,7 +248,10 @@ class IsolateCollections(bpy.types.Operator):
 
             bpy.types.Scene.collections_isolated = True
 
-    def execute(self, context):
-        list_of_collections = IsolateCollections.get_collections(self)
-        IsolateCollections.toggle_hide_isolate(list_of_collections, bpy.types.Scene.collections_isolated)
-        return {"FINISHED"}
+        elif isolated:
+            # unhide / return to previous state
+            for i in bpy.types.Scene.previously_active_collections_C:
+                i[0].hide_viewport = i[1]
+            bpy.types.Scene.collections_isolated = False
+            bpy.types.Scene.previously_active_collections_C = []
+
