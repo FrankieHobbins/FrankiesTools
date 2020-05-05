@@ -144,11 +144,11 @@ class ToggleAllCollections(bpy.types.Operator):
     bpy.types.Scene.collections_all_visible = False
 
     def execute(self, context):
-        ToggleAllCollections.toggle_hide(bpy.context.view_layer.layer_collection)
+        ToggleAllCollections.toggle_hide(bpy.context.view_layer.layer_collection, bpy.types.Scene.collections_all_visible)
         return {"FINISHED"}
 
-    def toggle_hide(view_layer):
-        if bpy.types.Scene.collections_all_visible:
+    def toggle_hide(view_layer, hide):
+        if hide:
             bpy.types.Scene.collections_isolated = False
             for i in bpy.types.Scene.previously_active_collections_A:
                 try:
@@ -164,7 +164,7 @@ class ToggleAllCollections(bpy.types.Operator):
             bpy.types.Scene.previously_active_collections_A = []
             bpy.types.Scene.previously_active_collections_B = []
 
-        elif bpy.types.Scene.collections_all_visible:
+        else:
             for i in view_layer.collection.children:
                 bpy.types.Scene.previously_active_collections_A.append([i, i.hide_viewport])
                 i.hide_viewport = False
