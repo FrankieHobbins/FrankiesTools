@@ -139,8 +139,6 @@ class ToggleAllCollections(bpy.types.Operator):
     bl_idname = "frankiestools.f_toggleallcollections"
     bl_description = "turn all collection visibility on"
 
-    bpy.types.Scene.previously_active_collections_A = []
-    bpy.types.Scene.previously_active_collections_B = []
     bpy.types.Scene.collections_all_visible = False
 
     def execute(self, context):
@@ -149,31 +147,26 @@ class ToggleAllCollections(bpy.types.Operator):
 
     def toggle_hide(view_layer, hide):
         if hide:
-            bpy.types.Scene.collections_isolated = False
-            for i in bpy.types.Scene.previously_active_collections_A:
-                try:
-                    i[0].hide_viewport = i[1]
-                except:
-                    print("error trying to unhide collection, but probably fine")
-            for i in bpy.types.Scene.previously_active_collections_B:
-                try:
-                    i[0].hide_viewport = i[2]
-                except:
-                    print("error trying to unhide collection, but probably fine")
-            bpy.types.Scene.collections_all_visible = False
-            bpy.types.Scene.previously_active_collections_A = []
-            bpy.types.Scene.previously_active_collections_B = []
+            if bpy.types.Scene.collections_all_visible:
+                for i in view_layer.collection.children:
+                    i["A"] = i.hide_viewport
+                    i.hide_viewport = False
+                for i in view_layer.children:
+                    # i.collection["B"] = i.exclude
+                    i.collection["C"] = i.hide_viewport
+                    i.hide_viewport = False
+                bpy.types.Scene.collections_all_visible = False
 
         else:
-            for i in view_layer.collection.children:
-                bpy.types.Scene.previously_active_collections_A.append([i, i.hide_viewport])
-                i.hide_viewport = False
-            for i in view_layer.children:
-                bpy.types.Scene.previously_active_collections_B.append([i, i.exclude, i.hide_viewport])
-                i.hide_viewport = False
-                if i.children:
-                    ToggleAllCollections.toggle_hide(i, False)
-            bpy.types.Scene.collections_all_visible = True
+            if bpy.types.Scene.collections_all_visible:
+                for i in view_layer.collection.children:
+                    i["A"] = i.hide_viewport
+                    i.hide_viewport = False
+                for i in view_layer.children:
+                    # i.collection["B"] = i.exclude
+                    i.collection["C"] = i.hide_viewport
+                    i.hide_viewport = False
+                bpy.types.Scene.collections_all_visible = False
 
 
 class IsolateCollections(bpy.types.Operator):
