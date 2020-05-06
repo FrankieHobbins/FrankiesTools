@@ -15,6 +15,7 @@ if "main" in locals():
     importlib.reload(main)
 
 classes = (
+    main.CollectionVisibility,
     main.ViewportSetup,
     main.SetOriginInEditMode,
     main.ToggleEditMode,

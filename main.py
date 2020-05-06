@@ -45,6 +45,7 @@ class SetOriginInEditMode(bpy.types.Operator):
             bpy.ops.object.mode_set(mode=mode)
         return {"FINISHED"}
 
+
 class SetOriginInEditModeActive(bpy.types.Operator):
     bl_label = "F set Origin active"
     bl_idname = "frankiestools.f_set_origin_active"
@@ -58,7 +59,7 @@ class SetOriginInEditModeActive(bpy.types.Operator):
             bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='BOUNDS')
             bpy.ops.object.mode_set(mode=mode)
-        return {"FINISHED"}        
+        return {"FINISHED"}
 
 
 class ToggleEditMode(bpy.types.Operator):
@@ -133,162 +134,137 @@ class DeleteKeyFrame(bpy.types.Operator):
             start_frame=0, end_frame=last_frame, bake_location='HEADS')
         return {"FINISHED"}
 
-
-class ToggleAllCollections(bpy.types.Operator):
-    bl_label = "F Toggle All Collections Visibility"
-    bl_idname = "frankiestools.f_toggleallcollections"
-    bl_description = "turn all collection visibility on"
-
-    bpy.types.Scene.collections_all_visible = False
-
-    def execute(self, context):
-        ToggleAllCollections.toggle_hide(bpy.context.view_layer.layer_collection, bpy.types.Scene.collections_all_visible)
-        return {"FINISHED"}
-
-    def toggle_hide(view_layer, hide):
-        if hide:
-            if bpy.types.Scene.collections_all_visible:
-                for i in view_layer.collection.children:
-                    i["A"] = i.hide_viewport
-                    i.hide_viewport = False
-                for i in view_layer.children:
-                    # i.collection["B"] = i.exclude
-                    i.collection["C"] = i.hide_viewport
-                    i.hide_viewport = False
-                bpy.types.Scene.collections_all_visible = False
-
-        else:
-            if bpy.types.Scene.collections_all_visible:
-                for i in view_layer.collection.children:
-                    i["A"] = i.hide_viewport
-                    i.hide_viewport = False
-                for i in view_layer.children:
-                    # i.collection["B"] = i.exclude
-                    i.collection["C"] = i.hide_viewport
-                    i.hide_viewport = False
-                bpy.types.Scene.collections_all_visible = False
-
-
-class IsolateCollections(bpy.types.Operator):
-    bl_label = "F Isolate Collections Visibility"
-    bl_idname = "frankiestools.f_isolatecollections"
+class CollectionVisibility(bpy.types.Operator):
+    bl_label = "F Isolate Visibility"
+    bl_idname = "frankiestools.f_collection_visibility"
     bl_description = "isolate collection"
 
-    f_isolatecollections_hide: bpy.props.BoolProperty(
-        name="Hide instead of isolate",
-        default=False
+    f_collection_visibility_mode: bpy.props.EnumProperty(
+        name="Mode",
+        items=[
+            ('reveal', 'Reveal', '', '', 0),
+            ('hide', 'Hide', '', '', 1),
+            ('isolate', 'Isolate', '', '', 2)
+        ],
+        default='reveal'
     )
 
-    bpy.types.Scene.previously_active_collections_C = []
-    bpy.types.Scene.collections_isolated = False
-    bpy.types.Scene.previously_active_collections_H = []
-    bpy.types.Scene.previously_selected_objects = []
-    bpy.types.Scene.collections_hidden = False
+    bpy.types.Scene.reveal_active = False
+    bpy.types.Scene.reveal_c_list = []
+    bpy.types.Scene.reveal_vlc_list = []
+    bpy.types.Scene.hide_active = False
+    bpy.types.Scene.hide_c_list = []
+    bpy.types.Scene.hide_vlc_list = []
+    bpy.types.Scene.isolate_active = False
+    bpy.types.Scene.isolate_c_list = []
+    bpy.types.Scene.isolate_vlc_list = []
 
     def execute(self, context):
-        print(f"Starting {self.f_isolatecollections_hide}")
-        # make a list of collections the currently selected object is in
-        list_of_collections = IsolateCollections.get_collections(self)
-        # toggle isolation of collections
-        IsolateCollections.toggle_hide_isolate(self, list_of_collections)
+        #print("-----------------------")
+        if (self.f_collection_visibility_mode == "reveal"):
+            self.reveal()
+        elif (self.f_collection_visibility_mode == "hide"):
+            self.hide()
+        elif (self.f_collection_visibility_mode == "isolate"):
+            self.isolate()
         return {"FINISHED"}
 
-    def get_collections(self):
-        list_of_objects = bpy.context.selected_objects
-        list_of_collections = []
+    def reveal(self):
+        # unhide everything and cache state
+        if not bpy.types.Scene.reveal_active:
+            for c in bpy.data.collections:
+                vlc = CollectionVisibility.find_vlc(self, c.name)
+                bpy.types.Scene.reveal_c_list.append([c.name, c.hide_viewport])
+                bpy.types.Scene.reveal_vlc_list.append([vlc.name, vlc.hide_viewport])
+                c.hide_viewport = False
+                vlc.hide_viewport = False
+            bpy.types.Scene.reveal_active = True
+        # revert to previous state
+        elif bpy.types.Scene.reveal_active:
+            for c in bpy.data.collections:
+                for i in bpy.types.Scene.reveal_c_list:
+                    if c.name == i[0]:
+                        c.hide_viewport = i[1]
+                vlc = CollectionVisibility.find_vlc(self, c.name)
+                for i in bpy.types.Scene.reveal_vlc_list:
+                    if vlc.name == i[0]:
+                        vlc.hide_viewport = i[1]
+            bpy.types.Scene.reveal_c_list = []
+            bpy.types.Scene.reveal_vlc_list = []
+            bpy.types.Scene.reveal_active = False
 
-        for i in bpy.data.collections:
-            for o in i.objects:
-                for obj in list_of_objects:
-                    if o == obj:
-                        list_of_collections.append(i)
+    def hide(self):
+        # hide collection and cache state
+        if not bpy.types.Scene.hide_active:
+            list_of_collections = [i for i in bpy.data.collections for o in i.objects for obj in bpy.context.selected_objects if o == obj]
+            for c in list_of_collections:
+                vlc = CollectionVisibility.find_vlc(self, c.name)
+                bpy.types.Scene.hide_c_list.append([c.name, c.hide_viewport])
+                bpy.types.Scene.hide_vlc_list.append([vlc.name, vlc.hide_viewport])
+                c.hide_viewport = True
+                vlc.hide_viewport = True
+            bpy.types.Scene.hide_active = True
+        # revert to previous state
+        elif bpy.types.Scene.hide_active:
+            for c in bpy.data.collections:
+                for i in bpy.types.Scene.hide_c_list:
+                    if c.name == i[0]:
+                        c.hide_viewport = i[1]
+                vlc = CollectionVisibility.find_vlc(self, c.name)
+                for i in bpy.types.Scene.hide_vlc_list:
+                    if vlc.name == i[0]:
+                        vlc.hide_viewport = i[1]
+            bpy.types.Scene.hide_c_list = []
+            bpy.types.Scene.hide_vlc_list = []
+            bpy.types.Scene.hide_active = False
 
-        # if hiding return
-        if self.f_isolatecollections_hide:
-            return list_of_collections
+    def isolate(self):
+        # hide all unselected collections cache state
+        if not bpy.types.Scene.isolate_active:
+            list_of_collections = [i for i in bpy.data.collections for o in i.objects for obj in bpy.context.selected_objects if o == obj]
+            list_of_collections_relations = self.get_collections_relations(list_of_collections)
+            print(list_of_collections_relations)
+            for c in bpy.data.collections:
+                if c not in list_of_collections_relations:
+                    vlc = CollectionVisibility.find_vlc(self, c.name)
+                    bpy.types.Scene.isolate_c_list.append([c.name, c.hide_viewport])
+                    bpy.types.Scene.isolate_vlc_list.append([vlc.name, vlc.hide_viewport])
+                    c.hide_viewport = True
+                    vlc.hide_viewport = True
+                    bpy.types.Scene.isolate_active = True
+        # revert to previous state
+        elif bpy.types.Scene.isolate_active:
+            for c in bpy.data.collections:
+                for i in bpy.types.Scene.isolate_c_list:
+                    if c.name == i[0]:
+                        c.hide_viewport = i[1]
+                vlc = CollectionVisibility.find_vlc(self, c.name)
+                for i in bpy.types.Scene.isolate_vlc_list:
+                    if vlc.name == i[0]:
+                        vlc.hide_viewport = i[1]
+            bpy.types.Scene.isolate_c_list = []
+            bpy.types.Scene.isolate_vlc_list = []
+            bpy.types.Scene.isolate_active = False
 
-        # if isolating add all find all the children collections then return
-        else:
-            list_of_collections_children = []
-            for collection in list_of_collections:
-                list_of_collections_children = IsolateCollections.addChildrenToList(self, collection, list_of_collections_children)
-
-            list_of_collections_parents = []
-            for collection in list_of_collections:
-                list_of_collections_parents = IsolateCollections.addParentsToList(self, collection, list_of_collections_parents)
-
-            list_of_collections += list_of_collections_children + list_of_collections_parents
-            return list_of_collections
-
-    def toggle_hide_isolate(self, collections):
-        # hide active objects collection
-        print(self.f_isolatecollections_hide)
-        if self.f_isolatecollections_hide:
-            if bpy.types.Scene.previously_selected_objects != bpy.context.selected_objects:
-                bpy.types.Scene.collections_hidden = False
-            if not bpy.types.Scene.collections_hidden:
-                for i in bpy.data.collections:
-                    # TODO : check if collection is in a view layer
-                    vlc = []
-                    IsolateCollections.find_vlc(self, bpy.context.view_layer.layer_collection, i, vlc)
-                    if len(vlc) > 0:
-                        for v in vlc:
-                            bpy.types.Scene.previously_active_collections_H.append([v, v.hide_viewport])
-                            if i in collections:
-                                v.hide_viewport = True
-                    else:
-                        print(f"error - e001")
-                bpy.types.Scene.collections_hidden = True
-            elif bpy.types.Scene.collections_hidden:
-                for i in bpy.types.Scene.previously_active_collections_H:
-                    i[0].hide_viewport = i[1]
-                #bpy.types.Scene.collections_all_visible = False
-                bpy.types.Scene.collections_hidden = False
-                bpy.types.Scene.previously_active_collections_H = []
-
-        # isolate active objects collection
-        else:
-            if not bpy.types.Scene.collections_isolated:
-                # save collection state for later and hide unactive ones
-                for i in bpy.data.collections:
-                    # TODO : check if collection is in a view layer
-                    vlc = []
-                    IsolateCollections.find_vlc(self, bpy.context.view_layer.layer_collection, i, vlc)
-                    if len(vlc) > 0:
-                        for v in vlc:
-                            bpy.types.Scene.previously_active_collections_C.append([v, v.hide_viewport])
-                            if i in collections:
-                                v.hide_viewport = False
-                            else:
-                                v.hide_viewport = True
-                    else:
-                        print(f"error - e002")
-                bpy.types.Scene.collections_isolated = True
-                bpy.types.Scene.collections_all_visible = False
-            elif bpy.types.Scene.collections_isolated:
-                # unhide / return to previous state
-                for i in bpy.types.Scene.previously_active_collections_C:
-                    i[0].hide_viewport = i[1]
-                bpy.types.Scene.collections_isolated = False
-                bpy.types.Scene.collections_all_visible = False
-                bpy.types.Scene.previously_active_collections_C = []
-
-    def find_vlc(self, vlc, collection, list):
-        # for each child of view layer collection
-        for child in vlc.children:
-            # return the target collection if found
-            if child.collection == collection:
-                list.append(child)
-            # otherwise for each child loop round and find another
-            elif child.children:
-                IsolateCollections.find_vlc(self, child, collection, list)
+    def get_collections_relations(self, list_of_collections):
+        # find children collections
+        list_of_collections_children = []
+        for collection in list_of_collections:
+            list_of_collections_children = IsolateCollections.addChildrenToList(self, collection, list_of_collections_children)
+        # find parent collections
+        list_of_collections_parents = []
+        for collection in list_of_collections:
+            list_of_collections_parents = IsolateCollections.addParentsToList(self, collection, list_of_collections_parents)
+        # combine all lists
+        list_of_collections += list_of_collections_children + list_of_collections_parents
+        return list_of_collections
 
     def addParentsToList(self, collection, col_parent_list):
         # if any collection has children
         for c in bpy.data.collections:
             if c.children:
                 for child in c.children:
-                    # if child is the collection we're looking for
+                    # if child is the collection we're looking for add to list and run again
                     if child == collection:
                         col_parent_list.append(c)
                         IsolateCollections.addParentsToList(self, c, col_parent_list)
@@ -300,7 +276,24 @@ class IsolateCollections(bpy.types.Operator):
             for child in collection.children:
                 # add to list
                 col_children_list.append(child)
-                # if child has children, runn again on child
+                # if child has children, run again on child
                 if child.children:
                     IsolateCollections.addChildrenToList(self, child, col_children_list)
         return col_children_list
+
+    def find_vlc(self, collection_name):
+        # iterate over a list but only return the first one because we only want one
+        collection = [c for c in bpy.data.collections if c.name == collection_name]  # this is a list but we only want a single item
+        vlc_list = []
+        CollectionVisibility.find_vlc_list(self, bpy.context.view_layer.layer_collection, collection[0], vlc_list)
+        return vlc_list[0]
+
+    def find_vlc_list(self, vlc, collection, list):
+        # for each child of view layer collection
+        for child in vlc.children:
+            # return the target collection if found
+            if child.collection == collection:
+                list.append(child)
+            # otherwise for each child loop round and find another
+            elif child.children:
+                CollectionVisibility.find_vlc_list(self, child, collection, list)
