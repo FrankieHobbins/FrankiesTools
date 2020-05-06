@@ -20,8 +20,6 @@ classes = (
     main.SetOriginInEditMode,
     main.ToggleEditMode,
     main.ToggleWeightMode,
-    main.ToggleAllCollections,
-    main.IsolateCollections,
     main.DeleteKeyFrame,
 )
 

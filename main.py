@@ -77,7 +77,7 @@ class ToggleEditMode(bpy.types.Operator):
                 elif mode == "EDIT_GPENCIL":
                     bpy.ops.object.mode_set(mode="OBJECT")
                 else:
-                    bpy.ops.object.mode_set(mode="EDIT_GPENCIL")
+                    bpy.ops.object.mode_set(mode="EDIT_GPENCIL")            
             else:
                 if mode == "OBJECT":
                     bpy.ops.object.mode_set(mode="EDIT")
@@ -134,6 +134,7 @@ class DeleteKeyFrame(bpy.types.Operator):
             start_frame=0, end_frame=last_frame, bake_location='HEADS')
         return {"FINISHED"}
 
+
 class CollectionVisibility(bpy.types.Operator):
     bl_label = "F Isolate Visibility"
     bl_idname = "frankiestools.f_collection_visibility"
@@ -160,7 +161,7 @@ class CollectionVisibility(bpy.types.Operator):
     bpy.types.Scene.isolate_vlc_list = []
 
     def execute(self, context):
-        #print("-----------------------")
+        # print("-----------------------")
         if (self.f_collection_visibility_mode == "reveal"):
             self.reveal()
         elif (self.f_collection_visibility_mode == "hide"):
@@ -250,11 +251,11 @@ class CollectionVisibility(bpy.types.Operator):
         # find children collections
         list_of_collections_children = []
         for collection in list_of_collections:
-            list_of_collections_children = IsolateCollections.addChildrenToList(self, collection, list_of_collections_children)
+            list_of_collections_children = CollectionVisibility.addChildrenToList(self, collection, list_of_collections_children)
         # find parent collections
         list_of_collections_parents = []
         for collection in list_of_collections:
-            list_of_collections_parents = IsolateCollections.addParentsToList(self, collection, list_of_collections_parents)
+            list_of_collections_parents = CollectionVisibility.addParentsToList(self, collection, list_of_collections_parents)
         # combine all lists
         list_of_collections += list_of_collections_children + list_of_collections_parents
         return list_of_collections
@@ -267,7 +268,7 @@ class CollectionVisibility(bpy.types.Operator):
                     # if child is the collection we're looking for add to list and run again
                     if child == collection:
                         col_parent_list.append(c)
-                        IsolateCollections.addParentsToList(self, c, col_parent_list)
+                        CollectionVisibility.addParentsToList(self, c, col_parent_list)
         return col_parent_list
 
     def addChildrenToList(self, collection, col_children_list):
@@ -278,7 +279,7 @@ class CollectionVisibility(bpy.types.Operator):
                 col_children_list.append(child)
                 # if child has children, run again on child
                 if child.children:
-                    IsolateCollections.addChildrenToList(self, child, col_children_list)
+                    CollectionVisibility.addChildrenToList(self, child, col_children_list)
         return col_children_list
 
     def find_vlc(self, collection_name):
