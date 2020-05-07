@@ -154,10 +154,10 @@ class CollectionVisibility(bpy.types.Operator):
     bpy.types.Scene.reveal_c_list = []
     bpy.types.Scene.reveal_vlc_list = []
     bpy.types.Scene.hide_active = False
-    bpy.types.Scene.hide_c_list = []
+    """bpy.types.Scene.hide_c_list = []"""
     bpy.types.Scene.hide_vlc_list = []
     bpy.types.Scene.isolate_active = False
-    bpy.types.Scene.isolate_c_list = []
+    """bpy.types.Scene.isolate_c_list = []"""
     bpy.types.Scene.isolate_vlc_list = []
 
     def execute(self, context):
@@ -200,22 +200,24 @@ class CollectionVisibility(bpy.types.Operator):
             list_of_collections = [i for i in bpy.data.collections for o in i.objects for obj in bpy.context.selected_objects if o == obj]
             for c in list_of_collections:
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                bpy.types.Scene.hide_c_list.append([c.name, c.hide_viewport])
+                """bpy.types.Scene.hide_c_list.append([c.name, c.hide_viewport])"""
                 bpy.types.Scene.hide_vlc_list.append([vlc.name, vlc.hide_viewport])
-                c.hide_viewport = True
+                """c.hide_viewport = True"""
                 vlc.hide_viewport = True
             bpy.types.Scene.hide_active = True
         # revert to previous state
         elif bpy.types.Scene.hide_active:
             for c in bpy.data.collections:
+                """
                 for i in bpy.types.Scene.hide_c_list:
                     if c.name == i[0]:
                         c.hide_viewport = i[1]
+                """
                 vlc = CollectionVisibility.find_vlc(self, c.name)
                 for i in bpy.types.Scene.hide_vlc_list:
                     if vlc.name == i[0]:
                         vlc.hide_viewport = i[1]
-            bpy.types.Scene.hide_c_list = []
+            """bpy.types.Scene.hide_c_list = []"""
             bpy.types.Scene.hide_vlc_list = []
             bpy.types.Scene.hide_active = False
 
@@ -228,22 +230,24 @@ class CollectionVisibility(bpy.types.Operator):
             for c in bpy.data.collections:
                 if c not in list_of_collections_relations:
                     vlc = CollectionVisibility.find_vlc(self, c.name)
-                    bpy.types.Scene.isolate_c_list.append([c.name, c.hide_viewport])
+                    """bpy.types.Scene.isolate_c_list.append([c.name, c.hide_viewport])"""
                     bpy.types.Scene.isolate_vlc_list.append([vlc.name, vlc.hide_viewport])
-                    c.hide_viewport = True
+                    """c.hide_viewport = True"""
                     vlc.hide_viewport = True
                     bpy.types.Scene.isolate_active = True
         # revert to previous state
         elif bpy.types.Scene.isolate_active:
             for c in bpy.data.collections:
+                """
                 for i in bpy.types.Scene.isolate_c_list:
                     if c.name == i[0]:
                         c.hide_viewport = i[1]
+                """
                 vlc = CollectionVisibility.find_vlc(self, c.name)
                 for i in bpy.types.Scene.isolate_vlc_list:
                     if vlc.name == i[0]:
                         vlc.hide_viewport = i[1]
-            bpy.types.Scene.isolate_c_list = []
+            """bpy.types.Scene.isolate_c_list = []"""
             bpy.types.Scene.isolate_vlc_list = []
             bpy.types.Scene.isolate_active = False
 
