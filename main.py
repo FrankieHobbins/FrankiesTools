@@ -222,7 +222,7 @@ class CollectionVisibility(bpy.types.Operator):
             bpy.types.Scene.hide_active = False
 
     def isolate(self):
-        # hide all unselected collections cache state
+        # hide all unselected collections, cache state
         if not bpy.types.Scene.isolate_active:
             list_of_collections = [i for i in bpy.data.collections for o in i.objects for obj in bpy.context.selected_objects if o == obj]
             list_of_collections_relations = self.get_collections_relations(list_of_collections)
@@ -291,6 +291,8 @@ class CollectionVisibility(bpy.types.Operator):
         collection = [c for c in bpy.data.collections if c.name == collection_name]  # this is a list but we only want a single item
         vlc_list = []
         CollectionVisibility.find_vlc_list(self, bpy.context.view_layer.layer_collection, collection[0], vlc_list)
+        if (len(vlc_list) < 1):
+            return
         return vlc_list[0]
 
     def find_vlc_list(self, vlc, collection, list):
