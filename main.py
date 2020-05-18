@@ -53,12 +53,18 @@ class SetOriginInEditModeActive(bpy.types.Operator):
 
     def execute(self, context):
         ao = bpy.context.active_object
-        # TODO cache cursor, set cursor to active, use cursor, set cursor to cache
-        if ao:
-            mode = ao.mode
-            bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='BOUNDS')
-            bpy.ops.object.mode_set(mode=mode)
+        so = bpy.context.selected_objects
+        if ao and so:
+            loc = bpy.context.scene.cursor.location
+            bpy.context.scene.cursor.location = ao.location
+            for o in so:
+                bpy.context.view_layer.objects.active = o
+                mode = o.mode
+                bpy.ops.object.mode_set(mode='OBJECT')
+                bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='BOUNDS')
+                bpy.ops.object.mode_set(mode=mode)
+            bpy.context.scene.cursor.location = loc
+            bpy.context.view_layer.objects.active = ao
         return {"FINISHED"}
 
 

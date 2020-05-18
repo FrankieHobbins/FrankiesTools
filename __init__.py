@@ -18,6 +18,7 @@ classes = (
     main.CollectionVisibility,
     main.ViewportSetup,
     main.SetOriginInEditMode,
+    main.SetOriginInEditModeActive,
     main.ToggleEditMode,
     main.ToggleWeightMode,
     main.DeleteKeyFrame,
