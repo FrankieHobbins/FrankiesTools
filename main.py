@@ -160,13 +160,15 @@ class CollectionVisibility(bpy.types.Operator):
     bpy.types.Scene.isolate_vlc_list = []
 
     def execute(self, context):
-        # print("-----------------------")
+        print("-----------------------")
+        print(f" Starting hide = {bpy.types.Scene.hide_active} reveal = {bpy.types.Scene.reveal_active} isolate = {bpy.types.Scene.isolate_active}")
         if (self.f_collection_visibility_mode == "reveal"):
             self.reveal()
         elif (self.f_collection_visibility_mode == "hide"):
             self.hide()
         elif (self.f_collection_visibility_mode == "isolate"):
             self.isolate()
+        print(f" Finishing hide = {bpy.types.Scene.hide_active} reveal = {bpy.types.Scene.reveal_active} isolate = {bpy.types.Scene.isolate_active}")
         return {"FINISHED"}
 
     def reveal(self):
@@ -175,10 +177,11 @@ class CollectionVisibility(bpy.types.Operator):
             for c in bpy.data.collections:
                 vlc = CollectionVisibility.find_vlc(self, c.name)
                 bpy.types.Scene.reveal_c_list = [[c.name, c.hide_viewport]]
-                bpy.types.Scene.reveal_vlc_list = [[vlc.name, vlc.hide_viewport]]
+                bpy.types.Scene.reveal_vlc_list.append([vlc.name, vlc.hide_viewport])
                 c.hide_viewport = False
                 vlc.hide_viewport = False
-            bpy.types.Scene.reveal_active = True
+            # bpy.types.Scene.reveal_active = True
+            self.set_reveal_hide_isolate_state(True, True, True)
             bpy.types.Scene.previous = bpy.context.active_object
         # revert to previous state
         elif bpy.types.Scene.reveal_active:
@@ -192,7 +195,7 @@ class CollectionVisibility(bpy.types.Operator):
                         vlc.hide_viewport = i[1]
             bpy.types.Scene.reveal_c_list = []
             bpy.types.Scene.reveal_vlc_list = []
-            bpy.types.Scene.reveal_active = False
+            self.set_reveal_hide_isolate_state(False, False, False)
 
     def hide(self):
         # hide collection and cache state
@@ -200,9 +203,9 @@ class CollectionVisibility(bpy.types.Operator):
             list_of_collections = [i for i in bpy.data.collections for o in i.objects for obj in bpy.context.selected_objects if o == obj]
             for c in list_of_collections:
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                bpy.types.Scene.hide_vlc_list = [[vlc.name, vlc.hide_viewport]]
+                bpy.types.Scene.hide_vlc_list.append([vlc.name, vlc.hide_viewport])
                 vlc.hide_viewport = True
-            bpy.types.Scene.hide_active = True
+            self.set_reveal_hide_isolate_state(False, True, False)
             bpy.types.Scene.previous = bpy.context.active_object
         # revert to previous state
         elif bpy.types.Scene.hide_active:
@@ -212,7 +215,7 @@ class CollectionVisibility(bpy.types.Operator):
                     if vlc.name == i[0]:
                         vlc.hide_viewport = i[1]
             bpy.types.Scene.hide_vlc_list = []
-            bpy.types.Scene.hide_active = False
+            self.set_reveal_hide_isolate_state(False, False, False)
 
     def isolate(self):
         # hide all unselected collections, cache state
@@ -223,9 +226,9 @@ class CollectionVisibility(bpy.types.Operator):
             for c in bpy.data.collections:
                 if c not in list_of_collections_relations:
                     vlc = CollectionVisibility.find_vlc(self, c.name)
-                    bpy.types.Scene.isolate_vlc_list = [[vlc.name, vlc.hide_viewport]]
+                    bpy.types.Scene.isolate_vlc_list.append([vlc.name, vlc.hide_viewport])
                     vlc.hide_viewport = True
-                    bpy.types.Scene.isolate_active = True
+                    self.set_reveal_hide_isolate_state(False, False, True)
             bpy.types.Scene.previous = bpy.context.active_object
         # revert to previous state
         elif bpy.types.Scene.isolate_active:
@@ -235,7 +238,12 @@ class CollectionVisibility(bpy.types.Operator):
                     if vlc.name == i[0]:
                         vlc.hide_viewport = i[1]
             bpy.types.Scene.isolate_vlc_list = []
-            bpy.types.Scene.isolate_active = False
+            self.set_reveal_hide_isolate_state(False, False, False)
+
+    def set_reveal_hide_isolate_state(self, reveal, hide, isolate):
+        bpy.types.Scene.reveal_active = reveal
+        bpy.types.Scene.hide_active = hide
+        bpy.types.Scene.isolate_active = isolate
 
     def get_collections_relations(self, list_of_collections):
         # find children collections
