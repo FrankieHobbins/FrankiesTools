@@ -166,15 +166,13 @@ class CollectionVisibility(bpy.types.Operator):
     bpy.types.Scene.isolate_vlc_list = []
 
     def execute(self, context):
-        print("-----------------------")
-        print(f" Starting hide = {bpy.types.Scene.hide_active} reveal = {bpy.types.Scene.reveal_active} isolate = {bpy.types.Scene.isolate_active}")
+        #print("-----------------------")
         if (self.f_collection_visibility_mode == "reveal"):
             self.reveal()
         elif (self.f_collection_visibility_mode == "hide"):
             self.hide()
         elif (self.f_collection_visibility_mode == "isolate"):
             self.isolate()
-        print(f" Finishing hide = {bpy.types.Scene.hide_active} reveal = {bpy.types.Scene.reveal_active} isolate = {bpy.types.Scene.isolate_active}")
         return {"FINISHED"}
 
     def reveal(self):
@@ -182,10 +180,11 @@ class CollectionVisibility(bpy.types.Operator):
         if not bpy.types.Scene.reveal_active or bpy.context.active_object != bpy.types.Scene.previous:
             for c in bpy.data.collections:
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                bpy.types.Scene.reveal_c_list = [[c.name, c.hide_viewport]]
-                bpy.types.Scene.reveal_vlc_list.append([vlc.name, vlc.hide_viewport])
-                c.hide_viewport = False
-                vlc.hide_viewport = False
+                if vlc:
+                    bpy.types.Scene.reveal_c_list = [[c.name, c.hide_viewport]]
+                    bpy.types.Scene.reveal_vlc_list.append([vlc.name, vlc.hide_viewport])
+                    c.hide_viewport = False
+                    vlc.hide_viewport = False
             # bpy.types.Scene.reveal_active = True
             self.set_reveal_hide_isolate_state(True, True, True)
             bpy.types.Scene.previous = bpy.context.active_object
@@ -196,9 +195,10 @@ class CollectionVisibility(bpy.types.Operator):
                     if c.name == i[0]:
                         c.hide_viewport = i[1]
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                for i in bpy.types.Scene.reveal_vlc_list:
-                    if vlc.name == i[0]:
-                        vlc.hide_viewport = i[1]
+                if vlc:
+                    for i in bpy.types.Scene.reveal_vlc_list:
+                        if vlc.name == i[0]:
+                            vlc.hide_viewport = i[1]
             bpy.types.Scene.reveal_c_list = []
             bpy.types.Scene.reveal_vlc_list = []
             self.set_reveal_hide_isolate_state(False, False, False)
