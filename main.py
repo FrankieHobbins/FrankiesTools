@@ -1,4 +1,5 @@
 import bpy
+from mathutils import Vector
 
 
 class ViewportSetup(bpy.types.Operator):
@@ -65,6 +66,22 @@ class SetOriginInEditModeActive(bpy.types.Operator):
                 bpy.ops.object.mode_set(mode=mode)
             bpy.context.scene.cursor.location = loc
             bpy.context.view_layer.objects.active = ao
+        return {"FINISHED"}
+
+
+class SetCursor(bpy.types.Operator):
+    bl_label = "F set 3d cursor"
+    bl_idname = "frankiestools.f_set_cursor"
+    bl_description = "3d cursor workflow"
+
+    def execute(self, context):
+        if bpy.context.scene.cursor.location == Vector((0.0, 0.0, 0.0)):
+            bpy.context.scene.cursor.location = bpy.context.view_layer.objects.active.location
+        elif bpy.context.scene.cursor.location == bpy.context.view_layer.objects.active.location:
+            bpy.ops.view3d.snap_cursor_to_selected()
+        else:
+            bpy.context.scene.cursor.location = Vector((0, 0, 0))
+        bpy.context.scene.tool_settings.transform_pivot_point = 'CURSOR'
         return {"FINISHED"}
 
 
@@ -166,13 +183,14 @@ class CollectionVisibility(bpy.types.Operator):
     bpy.types.Scene.isolate_vlc_list = []
 
     def execute(self, context):
-        #print("-----------------------")
+        # print("-----------------------")
         if (self.f_collection_visibility_mode == "reveal"):
             self.reveal()
         elif (self.f_collection_visibility_mode == "hide"):
             self.hide()
         elif (self.f_collection_visibility_mode == "isolate"):
             self.isolate()
+        
         return {"FINISHED"}
 
     def reveal(self):

@@ -19,6 +19,7 @@ classes = (
     main.ViewportSetup,
     main.SetOriginInEditMode,
     main.SetOriginInEditModeActive,
+    main.SetCursor,
     main.ToggleEditMode,
     main.ToggleWeightMode,
     main.DeleteKeyFrame,
