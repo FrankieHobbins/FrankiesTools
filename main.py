@@ -93,6 +93,7 @@ class ToggleEditMode(bpy.types.Operator):
     def execute(self, context):
         ao = bpy.context.active_object
         mode = ao.mode
+        bpy.context.space_data.show_gizmo = True
         if ao:
             if ao.type == "GPENCIL":
                 if mode == "OBJECT":
@@ -100,7 +101,7 @@ class ToggleEditMode(bpy.types.Operator):
                 elif mode == "EDIT_GPENCIL":
                     bpy.ops.object.mode_set(mode="OBJECT")
                 else:
-                    bpy.ops.object.mode_set(mode="EDIT_GPENCIL")            
+                    bpy.ops.object.mode_set(mode="EDIT_GPENCIL")
             else:
                 if mode == "OBJECT":
                     bpy.ops.object.mode_set(mode="EDIT")
@@ -119,6 +120,7 @@ class ToggleWeightMode(bpy.types.Operator):
     def execute(self, context):
         ao = bpy.context.active_object
         mode = ao.mode
+        bpy.context.space_data.show_gizmo = True
         if ao:
             if ao.type == "ARMATURE":
                 if mode == "OBJECT":
@@ -190,7 +192,6 @@ class CollectionVisibility(bpy.types.Operator):
             self.hide()
         elif (self.f_collection_visibility_mode == "isolate"):
             self.isolate()
-        
         return {"FINISHED"}
 
     def reveal(self):
