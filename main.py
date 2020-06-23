@@ -32,6 +32,21 @@ class ViewportSetup(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ModifierSync(bpy.types.Operator):
+    bl_label = "F modifier sync"
+    bl_idname = "frankiestools.f_modifier_sync"
+    bl_description = "sets modifiers render visilibilty to be the same as the viewport visibility"
+
+    def execute(self, context):
+        for o in bpy.context.selected_objects:
+            for m in o.modifiers:
+                m.show_render = m.show_viewport
+                if m.type == "SUBSURF":
+                    m.render_levels = m.levels
+
+        return {"FINISHED"}
+
+
 class SetOriginInEditMode(bpy.types.Operator):
     bl_label = "F set Origin"
     bl_idname = "frankiestools.f_set_origin"
@@ -93,7 +108,6 @@ class ToggleEditMode(bpy.types.Operator):
     def execute(self, context):
         ao = bpy.context.active_object
         mode = ao.mode
-        bpy.context.space_data.show_gizmo = True
         if ao:
             if ao.type == "GPENCIL":
                 if mode == "OBJECT":
@@ -101,7 +115,7 @@ class ToggleEditMode(bpy.types.Operator):
                 elif mode == "EDIT_GPENCIL":
                     bpy.ops.object.mode_set(mode="OBJECT")
                 else:
-                    bpy.ops.object.mode_set(mode="EDIT_GPENCIL")
+                    bpy.ops.object.mode_set(mode="EDIT_GPENCIL")            
             else:
                 if mode == "OBJECT":
                     bpy.ops.object.mode_set(mode="EDIT")
@@ -120,7 +134,6 @@ class ToggleWeightMode(bpy.types.Operator):
     def execute(self, context):
         ao = bpy.context.active_object
         mode = ao.mode
-        bpy.context.space_data.show_gizmo = True
         if ao:
             if ao.type == "ARMATURE":
                 if mode == "OBJECT":
@@ -192,6 +205,7 @@ class CollectionVisibility(bpy.types.Operator):
             self.hide()
         elif (self.f_collection_visibility_mode == "isolate"):
             self.isolate()
+        
         return {"FINISHED"}
 
     def reveal(self):
@@ -214,7 +228,6 @@ class CollectionVisibility(bpy.types.Operator):
                     if c.name == i[0]:
                         c.hide_viewport = i[1]
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                print(vlc)
                 if vlc:
                     for i in bpy.types.Scene.reveal_vlc_list:
                         if vlc.name == i[0]:
@@ -237,11 +250,9 @@ class CollectionVisibility(bpy.types.Operator):
         elif bpy.types.Scene.hide_active:
             for c in bpy.data.collections:
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                print(vlc)
-                if vlc:
-                    for i in bpy.types.Scene.hide_vlc_list:
-                        if vlc.name == i[0]:
-                            vlc.hide_viewport = i[1]
+                for i in bpy.types.Scene.hide_vlc_list:
+                    if vlc.name == i[0]:
+                        vlc.hide_viewport = i[1]
             bpy.types.Scene.hide_vlc_list = []
             self.set_reveal_hide_isolate_state(False, False, False)
 
@@ -254,19 +265,17 @@ class CollectionVisibility(bpy.types.Operator):
             for c in bpy.data.collections:
                 if c not in list_of_collections_relations:
                     vlc = CollectionVisibility.find_vlc(self, c.name)
-                    if vlc:
-                        bpy.types.Scene.isolate_vlc_list.append([vlc.name, vlc.hide_viewport])
-                        vlc.hide_viewport = True
-                        self.set_reveal_hide_isolate_state(False, False, True)
+                    bpy.types.Scene.isolate_vlc_list.append([vlc.name, vlc.hide_viewport])
+                    vlc.hide_viewport = True
+                    self.set_reveal_hide_isolate_state(False, False, True)
             bpy.types.Scene.previous = bpy.context.active_object
         # revert to previous state
         elif bpy.types.Scene.isolate_active:
             for c in bpy.data.collections:
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                if vlc:
-                    for i in bpy.types.Scene.isolate_vlc_list:
-                        if vlc.name == i[0]:
-                            vlc.hide_viewport = i[1]
+                for i in bpy.types.Scene.isolate_vlc_list:
+                    if vlc.name == i[0]:
+                        vlc.hide_viewport = i[1]
             bpy.types.Scene.isolate_vlc_list = []
             self.set_reveal_hide_isolate_state(False, False, False)
 
