@@ -23,7 +23,8 @@ classes = (
     main.ToggleEditMode,
     main.ToggleWeightMode,
     main.DeleteKeyFrame,
-    main.ModifierSync
+    main.ModifierSync,
+    main.BadFcurves
 )
 
 register, unregister = bpy.utils.register_classes_factory(classes)

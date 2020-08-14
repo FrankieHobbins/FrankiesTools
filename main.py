@@ -72,10 +72,10 @@ class SetOriginInEditModeActive(bpy.types.Operator):
         so = bpy.context.selected_objects
         if ao and so:
             loc = bpy.context.scene.cursor.location
-            bpy.context.scene.cursor.location = ao.location
             for o in so:
                 bpy.context.view_layer.objects.active = o
                 mode = o.mode
+                bpy.ops.view3d.snap_cursor_to_selected()
                 bpy.ops.object.mode_set(mode='OBJECT')
                 bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='BOUNDS')
                 bpy.ops.object.mode_set(mode=mode)
@@ -98,6 +98,49 @@ class SetCursor(bpy.types.Operator):
             bpy.context.scene.cursor.location = Vector((0, 0, 0))
         bpy.context.scene.tool_settings.transform_pivot_point = 'CURSOR'
         return {"FINISHED"}
+
+
+class BadFcurves(bpy.types.Operator):
+    bl_label = "F print bad fcurves to console"
+    bl_idname = "frankiestools.f_print_bad_fcurves"
+    bl_description = "print bad fcurves to console"
+
+    def execute(self, context):
+        bones = ['"' + b.name + '"' for o in bpy.data.armatures for b in o.bones]
+        fcurves = [f for a in bpy.data.actions for f in a.fcurves]
+        lost = [f for f in fcurves if not any(f.data_path.find(el) != -1 for el in bones)]
+
+        for a in bpy.data.actions:
+            for f in a.fcurves:
+                if f in lost:
+                    print(f.data_path)
+                    # a.fcurves.remove(f)
+        return {"FINISHED"}
+
+
+class KeyFrameAllActionsConstraints(bpy.types.Operator):
+    bl_idname = "bone.keyframeallactionsconstraints"
+    bl_label = "Unused"
+    bl_description = "Propogate first keyframe from this action to all other actions if that action is missing a keyframe, handy for when you add a new bone and now need a keyframe for it on all other actions "
+
+    def execute(self, context):
+        action = bpy.context.object.animation_data.action  # current action
+        actions = bpy.data.actions
+        for selbone in bpy.context.selected_pose_bones:
+            for f in bpy.data.actions[action.name].fcurves:
+                if str("\"" + selbone.name + "\"") in str(f.data_path):
+                    findex = f.data_path
+                    if "constraint" in findex:
+                        for a in actions:
+                            booltest = False
+                            for f in bpy.data.actions[a.name].fcurves:
+                                if findex in str(f.data_path):
+                                    booltest = True
+                            if not booltest:
+                                kfp = a.fcurves.new(findex)
+                                kfp.keyframe_points.add(1)
+                                kfp.keyframe_points[0].co = 0.0, 0.0
+        return{'FINISHED'}
 
 
 class ToggleEditMode(bpy.types.Operator):
