@@ -90,7 +90,7 @@ class SetCursor(bpy.types.Operator):
     bl_description = "3d cursor workflow"
 
     def execute(self, context):
-        if bpy.context.scene.cursor.location == Vector((0.0, 0.0, 0.0)):
+        if bpy.context.scene.cursor.location == Vector((0.0, 0.0, 0.0)) and bpy.context.scene.cursor.location != bpy.context.view_layer.objects.active.location:
             bpy.context.scene.cursor.location = bpy.context.view_layer.objects.active.location
         elif bpy.context.scene.cursor.location == bpy.context.view_layer.objects.active.location:
             bpy.ops.view3d.snap_cursor_to_selected()
@@ -158,7 +158,7 @@ class ToggleEditMode(bpy.types.Operator):
                 elif mode == "EDIT_GPENCIL":
                     bpy.ops.object.mode_set(mode="OBJECT")
                 else:
-                    bpy.ops.object.mode_set(mode="EDIT_GPENCIL")            
+                    bpy.ops.object.mode_set(mode="EDIT_GPENCIL")
             else:
                 if mode == "OBJECT":
                     bpy.ops.object.mode_set(mode="EDIT")
@@ -248,7 +248,7 @@ class CollectionVisibility(bpy.types.Operator):
             self.hide()
         elif (self.f_collection_visibility_mode == "isolate"):
             self.isolate()
-        
+
         return {"FINISHED"}
 
     def reveal(self):
