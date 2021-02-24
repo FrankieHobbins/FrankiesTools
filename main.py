@@ -6,6 +6,7 @@ class ViewportSetup(bpy.types.Operator):
     bl_label = "F Viewport Setup"
     bl_idname = "frankiestools.f_viewport_setup"
     bl_description = "sets the viewport just how I like it"
+    bl_options = {'REGISTER', 'UNDO'}
 
     clip_start: bpy.props.FloatProperty(
         name='min clip value',
@@ -36,6 +37,7 @@ class ModifierSync(bpy.types.Operator):
     bl_label = "F modifier sync"
     bl_idname = "frankiestools.f_modifier_sync"
     bl_description = "sets modifiers render visilibilty to be the same as the viewport visibility"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         for o in bpy.context.selected_objects:
@@ -51,6 +53,7 @@ class SetOriginInEditMode(bpy.types.Operator):
     bl_label = "F set Origin"
     bl_idname = "frankiestools.f_set_origin"
     bl_description = "sets origin even if in edit mode"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         ao = bpy.context.active_object
@@ -66,6 +69,7 @@ class SetOriginInEditModeActive(bpy.types.Operator):
     bl_label = "F set Origin active"
     bl_idname = "frankiestools.f_set_origin_active"
     bl_description = "sets origin even if in edit mode, to active selection"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         ao = bpy.context.active_object
@@ -88,6 +92,7 @@ class SetCursor(bpy.types.Operator):
     bl_label = "F set 3d cursor"
     bl_idname = "frankiestools.f_set_cursor"
     bl_description = "3d cursor workflow"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         if bpy.context.scene.cursor.location == Vector((0.0, 0.0, 0.0)) and bpy.context.scene.cursor.location != bpy.context.view_layer.objects.active.location:
@@ -96,7 +101,7 @@ class SetCursor(bpy.types.Operator):
             bpy.ops.view3d.snap_cursor_to_selected()
         else:
             bpy.context.scene.cursor.location = Vector((0, 0, 0))
-        bpy.context.scene.tool_settings.transform_pivot_point = 'CURSOR'
+        # bpy.context.scene.tool_settings.transform_pivot_point = 'CURSOR'
         return {"FINISHED"}
 
 
@@ -104,6 +109,7 @@ class BadFcurves(bpy.types.Operator):
     bl_label = "F print bad fcurves to console"
     bl_idname = "frankiestools.f_print_bad_fcurves"
     bl_description = "print bad fcurves to console"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         bones = ['"' + b.name + '"' for o in bpy.data.armatures for b in o.bones]
@@ -122,6 +128,7 @@ class KeyFrameAllActionsConstraints(bpy.types.Operator):
     bl_idname = "bone.keyframeallactionsconstraints"
     bl_label = "Unused"
     bl_description = "Propogate first keyframe from this action to all other actions if that action is missing a keyframe, handy for when you add a new bone and now need a keyframe for it on all other actions "
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         action = bpy.context.object.animation_data.action  # current action
@@ -147,11 +154,13 @@ class ToggleEditMode(bpy.types.Operator):
     bl_label = "F Toggle Edit Mode"
     bl_idname = "frankiestools.f_editmode"
     bl_description = "toggle object and edit mode"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         ao = bpy.context.active_object
         mode = ao.mode
         if ao:
+            bpy.context.space_data.show_gizmo = True
             if ao.type == "GPENCIL":
                 if mode == "OBJECT":
                     bpy.ops.object.mode_set(mode="EDIT_GPENCIL")
@@ -173,11 +182,13 @@ class ToggleWeightMode(bpy.types.Operator):
     bl_label = "F Toggle Weight Mode"
     bl_idname = "frankiestools.f_weightmode"
     bl_description = "toggle object and weight paint or pose"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         ao = bpy.context.active_object
         mode = ao.mode
         if ao:
+            bpy.context.space_data.show_gizmo = True
             if ao.type == "ARMATURE":
                 if mode == "OBJECT":
                     bpy.ops.object.mode_set(mode="POSE")
@@ -202,10 +213,45 @@ class ToggleWeightMode(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class CopyParents(bpy.types.Operator):
+    bl_label = "F Copy Parent"
+    bl_idname = "frankiestools.f_copy_parent"
+    bl_description = "copy parent and transform"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        a = bpy.context.active_object
+        for i in bpy.context.selected_objects:
+            if i == a:
+                continue
+            i.parent = a.parent
+            i.matrix_world = a.matrix_world
+            i.matrix_parent_inverse.identity()  # remove parent inverse
+        return {"FINISHED"}
+
+        
+
+
+class SetSmoothing(bpy.types.Operator):
+    bl_label = "F set smoothing"
+    bl_idname = "frankiestools.f_set_smoothing"
+    bl_description = "set smoothing"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        for ob in bpy.context.selected_objects:
+            for f in ob.data.polygons:
+                f.use_smooth = True
+            ob.data.use_auto_smooth = True
+            ob.data.auto_smooth_angle = 0.523599  # 30deg
+        return {"FINISHED"}
+
+
 class DeleteKeyFrame(bpy.types.Operator):
     bl_label = "F Delete Keyframe"
     bl_idname = "frankiestools.f_delete_keyframe"
     bl_description = "delete keyframe and update motion path"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         last_frame = bpy.context.scene.frame_end
@@ -216,10 +262,25 @@ class DeleteKeyFrame(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class RemoveUvFromSelected(bpy.types.Operator):
+    bl_label = "F Remove UV from selected"
+    bl_idname = "frankiestools.f_uv_remove"
+    bl_description = "remove uvs from selected"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        for o in bpy.context.selected_objects:
+            if o.type == "MESH":
+                for u in o.data.uv_layers:
+                    o.data.uv_layers.remove(u)
+        return {"FINISHED"}
+
+
 class CollectionVisibility(bpy.types.Operator):
     bl_label = "F Isolate Visibility"
     bl_idname = "frankiestools.f_collection_visibility"
     bl_description = "isolate collection"
+    bl_options = {'REGISTER', 'UNDO'}
 
     f_collection_visibility_mode: bpy.props.EnumProperty(
         name="Mode",
@@ -242,13 +303,13 @@ class CollectionVisibility(bpy.types.Operator):
 
     def execute(self, context):
         # print("-----------------------")
+        print(self.f_collection_visibility_mode)
         if (self.f_collection_visibility_mode == "reveal"):
             self.reveal()
         elif (self.f_collection_visibility_mode == "hide"):
             self.hide()
         elif (self.f_collection_visibility_mode == "isolate"):
             self.isolate()
-
         return {"FINISHED"}
 
     def reveal(self):
@@ -293,9 +354,10 @@ class CollectionVisibility(bpy.types.Operator):
         elif bpy.types.Scene.hide_active:
             for c in bpy.data.collections:
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                for i in bpy.types.Scene.hide_vlc_list:
-                    if vlc.name == i[0]:
-                        vlc.hide_viewport = i[1]
+                if vlc:
+                    for i in bpy.types.Scene.hide_vlc_list:
+                        if vlc.name == i[0]:
+                            vlc.hide_viewport = i[1]
             bpy.types.Scene.hide_vlc_list = []
             self.set_reveal_hide_isolate_state(False, False, False)
 
@@ -303,22 +365,23 @@ class CollectionVisibility(bpy.types.Operator):
         # hide all unselected collections, cache state
         if not bpy.types.Scene.isolate_active or bpy.context.active_object != bpy.types.Scene.previous:
             list_of_collections = [i for i in bpy.data.collections for o in i.objects for obj in bpy.context.selected_objects if o == obj]
-            list_of_collections_relations = self.get_collections_relations(list_of_collections)
-            print(list_of_collections_relations)
+            list_of_collections_relations = self.get_collections_relations(list_of_collections)            
             for c in bpy.data.collections:
                 if c not in list_of_collections_relations:
                     vlc = CollectionVisibility.find_vlc(self, c.name)
-                    bpy.types.Scene.isolate_vlc_list.append([vlc.name, vlc.hide_viewport])
-                    vlc.hide_viewport = True
-                    self.set_reveal_hide_isolate_state(False, False, True)
+                    if vlc:
+                        bpy.types.Scene.isolate_vlc_list.append([vlc.name, vlc.hide_viewport])
+                        vlc.hide_viewport = True
+                        self.set_reveal_hide_isolate_state(False, False, True)
             bpy.types.Scene.previous = bpy.context.active_object
         # revert to previous state
         elif bpy.types.Scene.isolate_active:
             for c in bpy.data.collections:
                 vlc = CollectionVisibility.find_vlc(self, c.name)
-                for i in bpy.types.Scene.isolate_vlc_list:
-                    if vlc.name == i[0]:
-                        vlc.hide_viewport = i[1]
+                if vlc:
+                    for i in bpy.types.Scene.isolate_vlc_list:
+                        if vlc.name == i[0]:
+                            vlc.hide_viewport = i[1]
             bpy.types.Scene.isolate_vlc_list = []
             self.set_reveal_hide_isolate_state(False, False, False)
 
@@ -367,6 +430,7 @@ class CollectionVisibility(bpy.types.Operator):
         collection = [c for c in bpy.data.collections if c.name == collection_name]  # this is a list but we only want a single item
         vlc_list = []
         CollectionVisibility.find_vlc_list(self, bpy.context.view_layer.layer_collection, collection[0], vlc_list)
+        print(list(vlc_list))
         if (len(vlc_list) < 1):
             return
         return vlc_list[0]

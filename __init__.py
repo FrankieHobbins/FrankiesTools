@@ -24,6 +24,9 @@ classes = (
     main.ToggleWeightMode,
     main.DeleteKeyFrame,
     main.ModifierSync,
+    main.SetSmoothing,
+    main.CopyParents,
+    main.RemoveUvFromSelected,
     main.BadFcurves
 )
 
