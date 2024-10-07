@@ -255,10 +255,14 @@ class DeleteKeyFrame(bpy.types.Operator):
 
     def execute(self, context):
         last_frame = bpy.context.scene.frame_end
-
         bpy.ops.anim.keyframe_delete()
-        bpy.ops.pose.paths_calculate(
-            start_frame=0, end_frame=last_frame, bake_location='HEADS')
+        headOrTail = "HEADS"
+        try:
+            if not bpy.context.preferences.addons["AnimScrubber"].preferences.recalculate_curves_at_head:
+                headOrTail = "TAILS"
+        except:
+            print("Animscrubber addon not found, using heads to bake curve")
+        bpy.ops.pose.paths_calculate(display_type='RANGE', range='SCENE', bake_location=headOrTail)
         return {"FINISHED"}
 
 
