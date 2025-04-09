@@ -279,11 +279,10 @@ class RemoveUvFromSelected(bpy.types.Operator):
                     o.data.uv_layers.remove(u)
         return {"FINISHED"}
 
-
 class CollectionVisibility(bpy.types.Operator):
     bl_label = "F Isolate Visibility"
     bl_idname = "frankiestools.f_collection_visibility"
-    bl_description = "isolate collection"
+    bl_description = "Isolate or toggle visibility of collections"
     bl_options = {'REGISTER', 'UNDO'}
 
     f_collection_visibility_mode: bpy.props.EnumProperty(
@@ -296,155 +295,165 @@ class CollectionVisibility(bpy.types.Operator):
         default='reveal'
     )
 
-    bpy.types.Scene.reveal_active = False
-    bpy.types.Scene.reveal_c_list = []
-    bpy.types.Scene.reveal_vlc_list = []
-    bpy.types.Scene.hide_active = False
-    bpy.types.Scene.hide_vlc_list = []
-    bpy.types.Scene.previous = []
-    bpy.types.Scene.isolate_active = False
-    bpy.types.Scene.isolate_vlc_list = []
-
     def execute(self, context):
-        # print("-----------------------")
-        print(self.f_collection_visibility_mode)
-        if (self.f_collection_visibility_mode == "reveal"):
-            self.reveal()
-        elif (self.f_collection_visibility_mode == "hide"):
-            self.hide()
-        elif (self.f_collection_visibility_mode == "isolate"):
-            self.isolate()
+        if self.f_collection_visibility_mode == "reveal":
+            self.reveal(context)
+        elif self.f_collection_visibility_mode == "hide":
+            self.hide(context)
+        elif self.f_collection_visibility_mode == "isolate":
+            self.isolate(context)
         return {"FINISHED"}
 
-    def reveal(self):
-        # unhide everything and cache state
-        if not bpy.types.Scene.reveal_active or bpy.context.active_object != bpy.types.Scene.previous:
-            for c in bpy.data.collections:
-                vlc = CollectionVisibility.find_vlc(self, c.name)
-                if vlc:
-                    bpy.types.Scene.reveal_c_list = [[c.name, c.hide_viewport]]
-                    bpy.types.Scene.reveal_vlc_list.append([vlc.name, vlc.hide_viewport])
-                    c.hide_viewport = False
-                    vlc.hide_viewport = False
-            # bpy.types.Scene.reveal_active = True
-            self.set_reveal_hide_isolate_state(True, True, True)
-            bpy.types.Scene.previous = bpy.context.active_object
-        # revert to previous state
-        elif bpy.types.Scene.reveal_active:
-            for c in bpy.data.collections:
-                for i in bpy.types.Scene.reveal_c_list:
-                    if c.name == i[0]:
-                        c.hide_viewport = i[1]
-                vlc = CollectionVisibility.find_vlc(self, c.name)
-                if vlc:
-                    for i in bpy.types.Scene.reveal_vlc_list:
-                        if vlc.name == i[0]:
-                            vlc.hide_viewport = i[1]
-            bpy.types.Scene.reveal_c_list = []
-            bpy.types.Scene.reveal_vlc_list = []
-            self.set_reveal_hide_isolate_state(False, False, False)
+    def reveal(self, context):
+        scene = context.scene
+        use_exclude = scene.fcv_use_exclude
 
-    def hide(self):
-        # hide collection and cache state
-        if not bpy.types.Scene.hide_active or bpy.context.active_object != bpy.types.Scene.previous:
-            list_of_collections = [i for i in bpy.data.collections for o in i.objects for obj in bpy.context.selected_objects if o == obj]
-            for c in list_of_collections:
-                vlc = CollectionVisibility.find_vlc(self, c.name)
-                bpy.types.Scene.hide_vlc_list.append([vlc.name, vlc.hide_viewport])
-                vlc.hide_viewport = True
-            self.set_reveal_hide_isolate_state(False, True, False)
-            bpy.types.Scene.previous = bpy.context.active_object
-        # revert to previous state
-        elif bpy.types.Scene.hide_active:
+        if not scene.fcv_reveal_active or context.active_object.name != scene.get("fcv_previous", ""):
+            scene.fcv_reveal_vlc_list.clear()
             for c in bpy.data.collections:
-                vlc = CollectionVisibility.find_vlc(self, c.name)
+                vlc = self.find_vlc(context.view_layer.layer_collection, c)
                 if vlc:
-                    for i in bpy.types.Scene.hide_vlc_list:
-                        if vlc.name == i[0]:
-                            vlc.hide_viewport = i[1]
-            bpy.types.Scene.hide_vlc_list = []
-            self.set_reveal_hide_isolate_state(False, False, False)
+                    item = scene.fcv_reveal_vlc_list.add()
+                    item.name = vlc.name
+                    item.state = vlc.exclude if use_exclude else vlc.hide_viewport
+                    if use_exclude:
+                        vlc.exclude = False
+                    else:
+                        vlc.hide_viewport = False
+            self.set_mode_state(scene, reveal=True)
+            scene["fcv_previous"] = context.active_object.name if context.active_object else ""
+        else:
+            for item in scene.fcv_reveal_vlc_list:
+                vlc = self.get_vlc_by_name(context.view_layer.layer_collection, item.name)
+                if vlc:
+                    if use_exclude:
+                        vlc.exclude = item.state
+                    else:
+                        vlc.hide_viewport = item.state
+            scene.fcv_reveal_vlc_list.clear()
+            self.set_mode_state(scene)
 
-    def isolate(self):
-        # hide all unselected collections, cache state
-        if not bpy.types.Scene.isolate_active or bpy.context.active_object != bpy.types.Scene.previous:
-            list_of_collections = [i for i in bpy.data.collections for o in i.objects for obj in bpy.context.selected_objects if o == obj]
-            list_of_collections_relations = self.get_collections_relations(list_of_collections)            
+    def hide(self, context):
+        scene = context.scene
+        use_exclude = scene.fcv_use_exclude
+
+        if not scene.fcv_hide_active or context.active_object.name != scene.get("fcv_previous", ""):
+            scene.fcv_hide_vlc_list.clear()
             for c in bpy.data.collections:
-                if c not in list_of_collections_relations:
-                    vlc = CollectionVisibility.find_vlc(self, c.name)
+                if any(o.name in c.objects for o in context.selected_objects):
+                    vlc = self.find_vlc(context.view_layer.layer_collection, c)
                     if vlc:
-                        bpy.types.Scene.isolate_vlc_list.append([vlc.name, vlc.hide_viewport])
-                        vlc.hide_viewport = True
-                        self.set_reveal_hide_isolate_state(False, False, True)
-            bpy.types.Scene.previous = bpy.context.active_object
-        # revert to previous state
-        elif bpy.types.Scene.isolate_active:
-            for c in bpy.data.collections:
-                vlc = CollectionVisibility.find_vlc(self, c.name)
+                        item = scene.fcv_hide_vlc_list.add()
+                        item.name = vlc.name
+                        item.state = vlc.exclude if use_exclude else vlc.hide_viewport
+                        if use_exclude:
+                            vlc.exclude = True
+                        else:
+                            vlc.hide_viewport = True
+            self.set_mode_state(scene, hide=True)
+            scene["fcv_previous"] = context.active_object.name if context.active_object else ""
+        else:
+            for item in scene.fcv_hide_vlc_list:
+                vlc = self.get_vlc_by_name(context.view_layer.layer_collection, item.name)
                 if vlc:
-                    for i in bpy.types.Scene.isolate_vlc_list:
-                        if vlc.name == i[0]:
-                            vlc.hide_viewport = i[1]
-            bpy.types.Scene.isolate_vlc_list = []
-            self.set_reveal_hide_isolate_state(False, False, False)
+                    if use_exclude:
+                        vlc.exclude = item.state
+                    else:
+                        vlc.hide_viewport = item.state
+            scene.fcv_hide_vlc_list.clear()
+            self.set_mode_state(scene)
 
-    def set_reveal_hide_isolate_state(self, reveal, hide, isolate):
-        bpy.types.Scene.reveal_active = reveal
-        bpy.types.Scene.hide_active = hide
-        bpy.types.Scene.isolate_active = isolate
+    def isolate(self, context):
+        scene = context.scene
+        use_exclude = scene.fcv_use_exclude
+        if not scene.fcv_isolate_active or context.active_object.name != scene.get("fcv_previous", ""):
+            selected_colls = [c for c in bpy.data.collections if any(o.name in c.objects for o in context.selected_objects)]
+            related = self.get_collections_relations(selected_colls)
+            scene.fcv_isolate_vlc_list.clear()
+            for c in bpy.data.collections:
+                if c.name not in [r.name for r in related]:
+                    vlc = self.find_vlc(context.view_layer.layer_collection, c)
+                    if vlc:
+                        item = scene.fcv_isolate_vlc_list.add()
+                        item.name = vlc.name
+                        item.state = vlc.exclude if use_exclude else vlc.hide_viewport
+                        if use_exclude:
+                            vlc.exclude = True
+                        else:
+                            vlc.hide_viewport = True
+            self.set_mode_state(scene, isolate=True)
+            scene["fcv_previous"] = context.active_object.name if context.active_object else ""
+        else:
+            for item in scene.fcv_isolate_vlc_list:
+                vlc = self.get_vlc_by_name(context.view_layer.layer_collection, item.name)
+                if vlc:
+                    if use_exclude:
+                        vlc.exclude = item.state
+                    else:
+                        vlc.hide_viewport = item.state
+            scene.fcv_isolate_vlc_list.clear()
+            self.set_mode_state(scene)
 
-    def get_collections_relations(self, list_of_collections):
-        # find children collections
-        list_of_collections_children = []
-        for collection in list_of_collections:
-            list_of_collections_children = CollectionVisibility.addChildrenToList(self, collection, list_of_collections_children)
-        # find parent collections
-        list_of_collections_parents = []
-        for collection in list_of_collections:
-            list_of_collections_parents = CollectionVisibility.addParentsToList(self, collection, list_of_collections_parents)
-        # combine all lists
-        list_of_collections += list_of_collections_children + list_of_collections_parents
-        return list_of_collections
+    def set_mode_state(self, scene, reveal=False, hide=False, isolate=False):
+        scene.fcv_reveal_active = reveal
+        scene.fcv_hide_active = hide
+        scene.fcv_isolate_active = isolate
 
-    def addParentsToList(self, collection, col_parent_list):
-        # if any collection has children
-        for c in bpy.data.collections:
-            if c.children:
-                for child in c.children:
-                    # if child is the collection we're looking for add to list and run again
-                    if child == collection:
-                        col_parent_list.append(c)
-                        CollectionVisibility.addParentsToList(self, c, col_parent_list)
-        return col_parent_list
-
-    def addChildrenToList(self, collection, col_children_list):
-        # if collection has children
-        if collection.children:
-            for child in collection.children:
-                # add to list
-                col_children_list.append(child)
-                # if child has children, run again on child
-                if child.children:
-                    CollectionVisibility.addChildrenToList(self, child, col_children_list)
-        return col_children_list
-
-    def find_vlc(self, collection_name):
-        # iterate over a list but only return the first one because we only want one
-        collection = [c for c in bpy.data.collections if c.name == collection_name]  # this is a list but we only want a single item
-        vlc_list = []
-        CollectionVisibility.find_vlc_list(self, bpy.context.view_layer.layer_collection, collection[0], vlc_list)
-        print(list(vlc_list))
-        if (len(vlc_list) < 1):
-            return
-        return vlc_list[0]
-
-    def find_vlc_list(self, vlc, collection, list):
-        # for each child of view layer collection
+    def find_vlc(self, vlc, collection):
+        if vlc.collection == collection:
+            return vlc
         for child in vlc.children:
-            # return the target collection if found
-            if child.collection == collection:
-                list.append(child)
-            # otherwise for each child loop round and find another
-            elif child.children:
-                CollectionVisibility.find_vlc_list(self, child, collection, list)
+            found = self.find_vlc(child, collection)
+            if found:
+                return found
+        return None
+
+    def get_vlc_by_name(self, vlc, name):
+        if vlc.name == name:
+            return vlc
+        for child in vlc.children:
+            found = self.get_vlc_by_name(child, name)
+            if found:
+                return found
+        return None
+
+    def get_collections_relations(self, collections):
+        result = set(collections)
+        for c in collections:
+            result.update(self.get_parents(c))
+            result.update(self.get_children(c))
+        return result
+
+    def get_parents(self, col):
+        parents = set()
+        for c in bpy.data.collections:
+            if col.name in [child.name for child in c.children]:
+                parents.add(c)
+                parents.update(self.get_parents(c))
+        return parents
+
+    def get_children(self, col):
+        children = set(col.children)
+        for child in col.children:
+            children.update(self.get_children(child))
+        return children
+
+class FCV_VisibilityState(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty()
+    state: bpy.props.BoolProperty()
+
+class FTOOLS_PT_VisibilityPanel(bpy.types.Panel):
+    bl_label = "F Visibility Tools"
+    bl_idname = "FTOOLS_PT_visibility_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "F Tools"
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+
+        layout.prop(scene, "fcv_use_exclude", toggle=True, icon='RESTRICT_VIEW_OFF')
+        layout.operator("frankiestools.f_collection_visibility", text="Reveal").f_collection_visibility_mode = 'reveal'
+        layout.operator("frankiestools.f_collection_visibility", text="Hide").f_collection_visibility_mode = 'hide'
+        layout.operator("frankiestools.f_collection_visibility", text="Isolate").f_collection_visibility_mode = 'isolate'
